@@ -1,14 +1,17 @@
 package com.newpix.client.gui;
 
 import com.newpix.client.NewPixClient;
+import com.newpix.util.ErrorHandler;
+import com.newpix.util.ConnectionConfig;
 
 import javax.swing.*;
 import java.awt.*;
-import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 
 /**
- * Interface gráfica para login e cadastro de usuários.
+ * Interface gráfica robusta para login e cadastro de usuários.
  */
 public class LoginGUI extends JFrame {
     
@@ -22,23 +25,25 @@ public class LoginGUI extends JFrame {
     private JTextField hostField;
     private JTextField portField;
     private JLabel statusLabel;
+    private volatile boolean isConnecting = false;
     
     public LoginGUI() {
         initializeComponents();
         setupLayout();
         setupEventHandlers();
+        setupWindowCloseHandler();
     }
     
     private void initializeComponents() {
-        setTitle("NewPix - Login");
-        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        setSize(400, 500);
+        setTitle("NewPix - Sistema Bancário");
+        setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
+        setSize(420, 600);
         setLocationRelativeTo(null);
         setResizable(false);
         
         // Campos de conexão
-        hostField = new JTextField("localhost", 15);
-        portField = new JTextField("8080", 8);
+        hostField = new JTextField(ConnectionConfig.DEFAULT_HOST, 15);
+        portField = new JTextField(String.valueOf(ConnectionConfig.DEFAULT_PORT), 8);
         conectarButton = new JButton("Conectar");
         
         // Campos de login/cadastro
@@ -49,15 +54,53 @@ public class LoginGUI extends JFrame {
         loginButton = new JButton("Login");
         cadastroButton = new JButton("Cadastrar");
         
-        statusLabel = new JLabel("Desconectado");
+        statusLabel = new JLabel("Desconectado - Configure a conexão", SwingConstants.CENTER);
         statusLabel.setForeground(Color.RED);
+        statusLabel.setFont(statusLabel.getFont().deriveFont(Font.BOLD));
         
         // Desabilitar campos até conectar
         setFieldsEnabled(false);
+        
+        // Configurar tooltips
+        setupTooltips();
+    }
+    
+    private void setupTooltips() {
+        hostField.setToolTipText("Endereço do servidor (ex: localhost, 192.168.1.100)");
+        portField.setToolTipText("Porta do servidor (1-65535)");
+        cpfField.setToolTipText("CPF no formato 000.000.000-00");
+        senhaField.setToolTipText("Senha com pelo menos 6 caracteres");
+        nomeField.setToolTipText("Nome completo com pelo menos 6 caracteres");
+    }
+    
+    private void setupWindowCloseHandler() {
+        addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowClosing(WindowEvent e) {
+                exitApplication();
+            }
+        });
+    }
+    
+    private void exitApplication() {
+        int option = JOptionPane.showConfirmDialog(
+            this,
+            "Deseja realmente sair do sistema?",
+            "Confirmar Saída",
+            JOptionPane.YES_NO_OPTION,
+            JOptionPane.QUESTION_MESSAGE
+        );
+        
+        if (option == JOptionPane.YES_OPTION) {
+            if (client != null) {
+                client.disconnect();
+            }
+            System.exit(0);
+        }
     }
     
     private void setupLayout() {
-        setLayout(new BorderLayout());
+        setLayout(new BorderLayout(10, 10));
         
         // Panel de conexão
         JPanel conexaoPanel = new JPanel(new GridBagLayout());
@@ -125,9 +168,9 @@ public class LoginGUI extends JFrame {
         infoPanel.setBorder(BorderFactory.createTitledBorder("Informações"));
         
         JTextArea infoArea = new JTextArea(
-            "NewPix - Sistema Bancário Distribuído\n" +
-            "1. Conecte-se ao servidor\n" +
-            "2. Faça login ou cadastre-se\n" +
+            "NewPix - Sistema Bancário Distribuído\\n" +
+            "1. Conecte-se ao servidor\\n" +
+            "2. Faça login ou cadastre-se\\n" +
             "3. Realize transações PIX"
         );
         infoArea.setEditable(false);
@@ -138,96 +181,136 @@ public class LoginGUI extends JFrame {
     }
     
     private void setupEventHandlers() {
-        conectarButton.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                conectarServidor();
-            }
-        });
+        conectarButton.addActionListener(e -> conectarServidor());
+        loginButton.addActionListener(e -> realizarLogin());
+        cadastroButton.addActionListener(e -> realizarCadastro());
         
-        loginButton.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
+        // Permitir Enter nos campos
+        ActionListener enterAction = e -> {
+            if (conectarButton.isEnabled()) {
+                conectarServidor();
+            } else if (loginButton.isEnabled()) {
                 realizarLogin();
             }
-        });
+        };
         
-        cadastroButton.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                realizarCadastro();
-            }
-        });
+        hostField.addActionListener(enterAction);
+        portField.addActionListener(enterAction);
+        cpfField.addActionListener(enterAction);
+        senhaField.addActionListener(enterAction);
     }
     
     private void conectarServidor() {
-        try {
-            String host = hostField.getText().trim();
-            int port = Integer.parseInt(portField.getText().trim());
-            
-            client = new NewPixClient(host, port);
-            
-            if (client.connect()) {
-                statusLabel.setText("Conectado");
-                statusLabel.setForeground(Color.GREEN);
-                conectarButton.setText("Desconectar");
-                setFieldsEnabled(true);
+        if (isConnecting) {
+            return; // Já conectando
+        }
+        
+        // Executar conexão em thread separada para não travar a GUI
+        SwingUtilities.invokeLater(() -> {
+            conectarButton.setEnabled(false);
+            conectarButton.setText("Conectando...");
+            statusLabel.setText("Conectando ao servidor...");
+            statusLabel.setForeground(Color.ORANGE);
+            isConnecting = true;
+        });
+        
+        new Thread(() -> {
+            boolean success = ErrorHandler.safeExecute(() -> {
                 
-                // Atualizar action do botão conectar
-                for (ActionListener al : conectarButton.getActionListeners()) {
-                    conectarButton.removeActionListener(al);
+                String host = hostField.getText().trim();
+                String portText = portField.getText().trim();
+                
+                // Validar entrada
+                if (host.isEmpty()) {
+                    throw new IllegalArgumentException("Host não pode estar vazio");
                 }
-                conectarButton.addActionListener(e -> desconectarServidor());
                 
-            } else {
-                JOptionPane.showMessageDialog(this, "Erro ao conectar ao servidor!", 
-                                            "Erro de Conexão", JOptionPane.ERROR_MESSAGE);
-            }
+                if (!ConnectionConfig.isValidHost(host)) {
+                    throw new IllegalArgumentException("Host inválido: " + host);
+                }
+                
+                if (!ConnectionConfig.isValidPort(portText)) {
+                    throw new IllegalArgumentException("Porta inválida: " + portText);
+                }
+                
+                int port = ConnectionConfig.parsePort(portText);
+                
+                // Criar cliente e conectar
+                client = new NewPixClient(host, port);
+                
+                if (!client.connect()) {
+                    throw new RuntimeException("Falha ao conectar ao servidor");
+                }
+                
+                return true;
+                
+            }, this, "Conectar ao servidor");
             
-        } catch (NumberFormatException ex) {
-            JOptionPane.showMessageDialog(this, "Porta inválida!", 
-                                        "Erro", JOptionPane.ERROR_MESSAGE);
-        }
-    }
-    
-    private void desconectarServidor() {
-        if (client != null) {
-            client.disconnect();
-        }
-        
-        statusLabel.setText("Desconectado");
-        statusLabel.setForeground(Color.RED);
-        conectarButton.setText("Conectar");
-        setFieldsEnabled(false);
-        
-        // Atualizar action do botão conectar
-        for (ActionListener al : conectarButton.getActionListeners()) {
-            conectarButton.removeActionListener(al);
-        }
-        conectarButton.addActionListener(e -> conectarServidor());
+            // Atualizar GUI na thread principal
+            SwingUtilities.invokeLater(() -> {
+                isConnecting = false;
+                conectarButton.setText("Conectar");
+                conectarButton.setEnabled(!success);
+                
+                if (success) {
+                    statusLabel.setText("Conectado ao servidor");
+                    statusLabel.setForeground(Color.GREEN);
+                    setFieldsEnabled(true);
+                    hostField.setEnabled(false);
+                    portField.setEnabled(false);
+                    cpfField.requestFocus();
+                } else {
+                    statusLabel.setText("Falha na conexão");
+                    statusLabel.setForeground(Color.RED);
+                }
+            });
+            
+        }).start();
     }
     
     private void realizarLogin() {
         String cpf = cpfField.getText().trim();
         String senha = new String(senhaField.getPassword());
         
+        // Validação básica
         if (cpf.isEmpty() || senha.isEmpty()) {
-            JOptionPane.showMessageDialog(this, "CPF e senha são obrigatórios!", 
-                                        "Erro", JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(this, 
+                "CPF e senha são obrigatórios", 
+                "Campos Obrigatórios", 
+                JOptionPane.WARNING_MESSAGE);
             return;
         }
         
-        NewPixClient.LoginResult result = client.login(cpf, senha);
+        // Executar login em thread separada
+        loginButton.setEnabled(false);
+        loginButton.setText("Logando...");
         
-        if (result.isSuccess()) {
-            // Abrir tela principal
-            MainGUI mainGUI = new MainGUI(client, result.getToken());
-            mainGUI.setVisible(true);
-            this.dispose();
-        } else {
-            JOptionPane.showMessageDialog(this, result.getMessage(), 
-                                        "Erro de Login", JOptionPane.ERROR_MESSAGE);
-        }
+        new Thread(() -> {
+            boolean success = ErrorHandler.safeExecute(() -> {
+                
+                if (client == null || !client.isConnected()) {
+                    throw new RuntimeException("Cliente não está conectado");
+                }
+                
+                return client.loginSimple(cpf, senha);
+                
+            }, this, "Realizar login");
+            
+            SwingUtilities.invokeLater(() -> {
+                loginButton.setEnabled(true);
+                loginButton.setText("Login");
+                
+                if (success) {
+                    // Fechar janela de login e abrir interface principal
+                    abrirInterfacePrincipal(cpf);
+                } else {
+                    // Limpar senha em caso de erro
+                    senhaField.setText("");
+                    senhaField.requestFocus();
+                }
+            });
+            
+        }).start();
     }
     
     private void realizarCadastro() {
@@ -235,22 +318,96 @@ public class LoginGUI extends JFrame {
         String nome = nomeField.getText().trim();
         String senha = new String(senhaField.getPassword());
         
-        if (cpf.isEmpty() || nome.isEmpty() || senha.isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Todos os campos são obrigatórios para cadastro!", 
-                                        "Erro", JOptionPane.ERROR_MESSAGE);
+        // Validação robusta
+        if (!validarDadosCadastro(cpf, nome, senha)) {
             return;
         }
         
-        NewPixClient.OperationResult result = client.criarUsuario(cpf, nome, senha);
+        // Executar cadastro em thread separada
+        cadastroButton.setEnabled(false);
+        cadastroButton.setText("Cadastrando...");
         
-        if (result.isSuccess()) {
-            JOptionPane.showMessageDialog(this, "Usuário cadastrado com sucesso!\nFaça login para continuar.", 
-                                        "Sucesso", JOptionPane.INFORMATION_MESSAGE);
-            nomeField.setText("");
-            senhaField.setText("");
-        } else {
-            JOptionPane.showMessageDialog(this, result.getMessage(), 
-                                        "Erro de Cadastro", JOptionPane.ERROR_MESSAGE);
+        new Thread(() -> {
+            boolean success = ErrorHandler.safeExecute(() -> {
+                
+                if (client == null || !client.isConnected()) {
+                    throw new RuntimeException("Cliente não está conectado");
+                }
+                
+                return client.cadastroSimple(cpf, nome, senha);
+                
+            }, this, "Realizar cadastro");
+            
+            SwingUtilities.invokeLater(() -> {
+                cadastroButton.setEnabled(true);
+                cadastroButton.setText("Cadastrar");
+                
+                if (success) {
+                    JOptionPane.showMessageDialog(this,
+                        "Usuário cadastrado com sucesso!\\nFaça login para continuar.",
+                        "Cadastro Realizado",
+                        JOptionPane.INFORMATION_MESSAGE);
+                    
+                    // Limpar campos e focar no login
+                    nomeField.setText("");
+                    senhaField.setText("");
+                    cpfField.requestFocus();
+                }
+            });
+            
+        }).start();
+    }
+    
+    private boolean validarDadosCadastro(String cpf, String nome, String senha) {
+        if (cpf.isEmpty() || nome.isEmpty() || senha.isEmpty()) {
+            JOptionPane.showMessageDialog(this,
+                "Todos os campos são obrigatórios para cadastro",
+                "Campos Obrigatórios",
+                JOptionPane.WARNING_MESSAGE);
+            return false;
+        }
+        
+        if (!cpf.matches("\\\\d{3}\\\\.\\\\d{3}\\\\.\\\\d{3}-\\\\d{2}")) {
+            JOptionPane.showMessageDialog(this,
+                "CPF deve estar no formato 000.000.000-00",
+                "CPF Inválido",
+                JOptionPane.WARNING_MESSAGE);
+            cpfField.requestFocus();
+            return false;
+        }
+        
+        if (nome.length() < 6) {
+            JOptionPane.showMessageDialog(this,
+                "Nome deve ter pelo menos 6 caracteres",
+                "Nome Inválido",
+                JOptionPane.WARNING_MESSAGE);
+            nomeField.requestFocus();
+            return false;
+        }
+        
+        if (senha.length() < 6) {
+            JOptionPane.showMessageDialog(this,
+                "Senha deve ter pelo menos 6 caracteres",
+                "Senha Inválida",
+                JOptionPane.WARNING_MESSAGE);
+            senhaField.requestFocus();
+            return false;
+        }
+        
+        return true;
+    }
+    
+    private void abrirInterfacePrincipal(String cpf) {
+        try {
+            // Criar e exibir interface principal
+            MainGUI mainGUI = new MainGUI(client, cpf);
+            mainGUI.setVisible(true);
+            
+            // Fechar esta janela
+            dispose();
+            
+        } catch (Exception e) {
+            ErrorHandler.handleUnexpectedError(e, this, "Abrir interface principal");
         }
     }
     
@@ -260,11 +417,11 @@ public class LoginGUI extends JFrame {
         nomeField.setEnabled(enabled);
         loginButton.setEnabled(enabled);
         cadastroButton.setEnabled(enabled);
-        
-        hostField.setEnabled(!enabled);
-        portField.setEnabled(!enabled);
     }
     
+    /**
+     * Método principal para testes.
+     */
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> {
             new LoginGUI().setVisible(true);
