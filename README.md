@@ -101,6 +101,7 @@ Toda mensagem trocada deve conter um campo `operacao`. Em envios de mensagem ao 
 * `transacao_criar`
 * `transacao_ler`
 * `depositar`
+* `erro_servidor` (Apenas o lado servidor recebe)
 
 ### 3.3. Padrão de Resposta (`status` e `info`)
 
