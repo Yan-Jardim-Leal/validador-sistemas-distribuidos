@@ -551,7 +551,7 @@ O cliente deve ser capaz de reportar este erro:
 }
 ```
 
-Isso é um requisito não funcional do professor, o servidor apenas deve dar print com o que recebeu.
+Isso é um requisito não funcional do professor, o servidor apenas deve dar um print no log com a operacao "erro_servidor" recebida.
 
 ## 5. Em caso de erro
 
