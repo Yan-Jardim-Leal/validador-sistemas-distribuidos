@@ -551,17 +551,7 @@ O cliente deve ser capaz de reportar este erro:
 }
 ```
 
-Servidor deve apenas responder que recebeu a mensagem, não é necessário fazer nenhuma tratativa de erro, apenas
-armazenar em algum log de erro ou exibir o erro em terminal.
-
-### Recebimento (Servidor → Cliente)
-```
-  {
-    "operacao": "erro_servidor",
-    "status": true,
-    "info": "Erro registrado no servidor"
-  }
-```
+Isso é um requisito não funcional do professor, o servidor apenas deve dar print com o que recebeu.
 
 ## 5. Em caso de erro
 
