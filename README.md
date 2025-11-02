@@ -523,6 +523,45 @@ ADENDO: Muito provavelmente caso o servidor se conecte com sucesso, ele nem mesm
 
 ```
 
+### 4.11. Erro na resposta do servidor (`erro_servidor`)
+Essa ação permite ao usuário reportar erros ao servidor em casos em que o servidor envia mensagens incorretas.
+
+Por exemplo caso o servidor responda com o usuário "null" durante a operação "usuario_ler"
+
+#### Recebimento (Servidor → Cliente) do exemplo acima
+
+```
+{
+  "operacao": "usuario_ler",
+  "status": true,
+  "info": "Dados do usuário recuperados com sucesso.",
+  "usuario": null
+}
+```
+
+O cliente deve ser capaz de reportar este erro:
+
+#### Envio (Cliente → Servidor)
+
+```
+{
+  "operacao": "erro_servidor",
+  "operacao_enviada": "usuario_ler",
+  "info": "O usuário enviado pelo servidor era nulo".
+}
+```
+
+Servidor deve apenas responder que recebeu a mensagem, não é necessário fazer nenhuma tratativa de erro, apenas
+armazenar em algum log de erro ou exibir o erro em terminal.
+
+### Recebimento (Servidor → Cliente)
+```
+  {
+    "operacao": "erro_servidor",
+    "status": true,
+    "info": "Erro registrado no servidor"
+  }
+```
 
 ## 5. Em caso de erro
 

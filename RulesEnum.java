@@ -1,4 +1,4 @@
-package validador;
+package br.com.banco.validator;
 
 import java.util.Objects;
 
@@ -16,7 +16,9 @@ public enum RulesEnum {
     // CR(UD) da transação
     TRANSACAO_CRIAR("transacao_criar"),
     TRANSACAO_LER("transacao_ler"), // É literalmente o envio de um 'getTransacao()' para o servidor, porém os parâmetros influenciam
-    DEPOSITAR("depositar");
+    DEPOSITAR("depositar"),
+    // Erro no servidor
+    ERRO_SERVIDOR("erro_servidor");
 
     RulesEnum(String rule) {
         this.rule = rule;
