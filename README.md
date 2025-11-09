@@ -7,7 +7,7 @@ Versão atual: 1.4
 
 Um projeto para a disciplina de Sistemas Distribuídos que define um protocolo de comunicação baseado em JSON para as operações de um sistema bancário simplificado.
 
-**Criadores:**
+**Editores:**
 
 * Yan Jardim Leal
 * Gabriel Pereira Neves
