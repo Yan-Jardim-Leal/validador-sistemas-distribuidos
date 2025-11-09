@@ -11,6 +11,7 @@ Um projeto para a disciplina de Sistemas Distribuídos que define um protocolo d
 
 * Yan Jardim Leal
 * Gabriel Pereira Neves
+* Lucas Daniel da Silva
 
 **Testers**
 * Thomas Valeranovicz de Oliveira
