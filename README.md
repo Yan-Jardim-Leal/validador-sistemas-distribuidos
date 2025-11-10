@@ -1,9 +1,9 @@
 
 # Protocolo de Mensagens - Sistema Bancário Simples
 
-Versão atual: 1.4
+Versão atual: 1.5
 
-Últimos tópicos atualizados: `4.11.`
+Últimos tópicos atualizados: `4.8.`, `4.9.`
 
 Um projeto para a disciplina de Sistemas Distribuídos que define um protocolo de comunicação baseado em JSON para as operações de um sistema bancário simplificado.
 
@@ -391,10 +391,11 @@ Exemplo:<br>
 ```
 
 ### 4.8. Leitura de Transações (`transacao_ler`)
-
+(A leitura inclui transferências e depósitos)<br>
 *Nota: Esta operação utiliza **filtragem por datas** para lidar com grandes volumes de dados.*<br>
 - Envia-se uma data inicial e uma data final. Assim, apenas as transações ocorridas no período determinado são devolvidas.<br>
 - O token a ser enviado deve ser do usuário logado no sistema.
+
 
 O servidor deve ter como limite máximo de retorno 31 dias (31 dias foi escolhido pois consegue acolher todos os meses), exemplo:<br>
 O Usuário pediu as transações do dia 1 de janeiro a 1 de fevereiro, é esperado que o servidor retorne todas as transações entre esse tempo<br>
@@ -453,6 +454,8 @@ O Usuário pediu as transações do dia 1 de janeiro a 1 de maio, o servidor dev
 ### 4.9. Realizar depósito (`depositar`)
 Essa ação permite que o usuário deposite quantia X de dinheiro em sua conta,<br>
 O `valor_enviado` representa a quantidade que está sendo depositada.
+
+*Importante:* Ao ser processada com sucesso, esta operação deve criar um novo registro de transação onde o usuario_enviador e o usuario_recebedor são o próprio usuário que realizou o depósito (identificado pelo token).
 
 #### Envio (Cliente → Servidor)
 
