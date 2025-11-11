@@ -576,7 +576,9 @@ O que isso significa? Quando o cliente receber uma operação com o `status` com
 ```
 
 ### 5.2. Erros de JSON
-Caso o servidor envie uma mensagem que não contenha `operacao`, `status` ou `info`, ou o cliente envie uma mensagem que não contenha `operacao`,<br>o servidor/cliente que recebe devem retornar `null` para encerrar a conexão.
+Caso o servidor envie uma mensagem que não contenha `operacao`, `status`, `info` OU campos extras de operações, siga o protocolo `4.11.`
+
+Caso o cliente envie uma mensagem que não contenha `operacao`,<br>o servidor/cliente que recebe devem retornar `null` para encerrar a conexão.
 
 ### 5.3 Erros na conexão
 Caso a primeira `operacao` a ser recebida não seja `conectar` um erro deve ser retornado como:
