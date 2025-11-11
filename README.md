@@ -576,7 +576,7 @@ O que isso significa? Quando o cliente receber uma operação com o `status` com
 ```
 
 ### 5.2. Erros de JSON
-Caso o servidor envie uma mensagem que não contenha `operacao`, `status`, `info` OU campos extras de operações, siga o protocolo `4.11.`
+Caso o servidor envie uma mensagem que não contenha `operacao`, `status`, `info` OU campos extras de operações, siga o protocolo [`4.11.`](https://github.com/Yan-Jardim-Leal/validador-sistemas-distribuidos?tab=readme-ov-file#411-erro-na-resposta-do-servidor-erro_servidor)
 
 Caso o cliente envie uma mensagem que não contenha `operacao`,<br>o servidor/cliente que recebe devem retornar `null` para encerrar a conexão.
 
