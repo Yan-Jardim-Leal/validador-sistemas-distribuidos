@@ -558,6 +558,39 @@ O cliente deve ser capaz de reportar este erro:
 
 Isso é um requisito não funcional do professor, o servidor apenas deve dar um print no log com a operacao "erro_servidor" recebida.
 
+IMPORTANTE: caso o erro ocorra devido ao fato da mensagem recebida pelo cliente não conter o campo "operacao", ou esse campo possuir um null, a mensagem devolvida ao servidor deverá conter o campo "operacao_enviada" com o valor null.
+Exemplo:
+
+#### Recebimento (Servidor → Cliente) do exemplo acima
+
+```
+{
+  "operacao": null,
+  "status": true,
+  "info": "Usuário cadastrado com sucesso.",
+}
+```
+ou
+
+```
+{
+  "status": true,
+  "info": "Usuário cadastrado com sucesso.",
+}
+```
+
+O cliente deve ser capaz de reportar este erro:
+
+#### Envio (Cliente → Servidor)
+
+```
+{
+  "operacao": "erro_servidor",
+  "operacao_enviada": null,
+  "info": "O usuário enviado pelo servidor era nulo".
+}
+```
+
 ## 5. Em caso de erro
 
 ### 5.1. Erros padrões
